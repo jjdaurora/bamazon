@@ -2,7 +2,7 @@ var mysql = require('mysql')
 var inquirer = require('inquirer')
 var itemInCart; 
 var requestedQty; 
-var userRequest; 
+var userPrice; 
 var connection = mysql.createConnection({
   host: 'localhost',
   port: 3306,
@@ -16,13 +16,13 @@ var connection = mysql.createConnection({
 })
 
 function showWhatsInStock() {
-    connection.query("SELECT * FROM products", function (err, results) {
+    connection.query("SELECT * FROM products", function (err, res) {
         if (err) throw err;
-        console.log("---------------------------------------------");
-        for (var i = 0; i < results.length; i++) {
-            console.log("Id: " + results[i].item_id + " -- " + results[i].product + " -- "
-                + results[i].department_name + " -- " + results[i].price + "-- " + results[i].stock_quantity);
-        }
+        console.table(res);
+        // for (var i = 0; i < results.length; i++) {
+        //     console.log("Id: " + results[i].item_id + " -- " + results[i].product + " -- "
+        //         + results[i].department_name + " -- " + results[i].price + "-- " + results[i].stock_quantity);
+        // }   
     });
 }
 
@@ -32,7 +32,7 @@ function promptUser () {
     {
       type: 'list',
       name: 'id',
-      message: "What you would like to buy today? Above is a list of what's in stock.Please select an ID",
+      message: "What you would like to buy today? Above is a list of what's in stock. Please select an ID",
       choices: [
         '1',
         '2',
@@ -43,59 +43,44 @@ function promptUser () {
       ]
     }
   ]).then(answers => {
-    console.log(answers.id)
-      if (answers.id == '1' || answers.id == '2' || answers.id == '7' || answers.id == '8' || answers.id == '9' || answers.id == '10') {
       itemInCart = answers.id;
-      getQuantity();
-    }
-    else {
-     console.log("Sorry, we don't have that item in stock.")
-    };
+      getQuantity(itemInCart);
   });
 };
 
-function getQuantity () {
+function getQuantity (itemInCart) {
   inquirer.prompt([{
     type: 'input',
     name: 'quantity',
     message: 'How many do you want to purchase?'
 }]).then(answers => {
-    console.log(answers);
     requestedQty = answers.quantity; 
-    checkQuantity(itemInCart);
+    checkQuantity(itemInCart, requestedQty);
   })
 }
 
-function checkQuantity (requestedQty) {
+function checkQuantity (itemInCart, requestedQty) {
   console.log('Checking available quantity...\n')
     connection.query('SELECT * from products', function (err, res) {
-        if (err) throw err
-    
+        if (err) throw err;
+        console.log(res);
         for (var i = 0; i < res.length; i++) {
-            if (res[i].item_id === requestedQty)  {
-                userRequest = results[i];
-            }
+            if (res[i].item_id == itemInCart)  {
+                userPrice = res[i].price;
                 if (res[i].stock_quantity < requestedQty) {
                     console.log("There is insufficient stock of this item!");
                     promptUser();
                 }
                 else if (res[i].stock_quantity >= requestedQty) {
-                    showPrice(requestedQty, userRequest.price);
-                    placeOrder(res[i.stock_quantity, requestedQty, userRequest])
+                    placeOrder(res[i].stock_quantity, requestedQty, userPrice, itemInCart)
                 }
+            }
         }
-        connection.end()
-        console.log(itemsToBidOn)
-});
+    });
+};
 
-function showPrice (quantity, price) {
-    var total = quantity * price; 
-    console.log("Cost per item is $" + price);
-    console.log("Quantity ordered: " + quantity);
-    console.log("TOTAL: $" + total);
-}
-
-function placeOrder (paramOne, paramTwo, paramThree) {
+function placeOrder (stockQuantity, requestedQty, userPrice, itemInCart) {
+    var totalCost = requestedQty * userPrice;
     inquirer.prompt([{
         name: "confirm",
         type: "list",
@@ -105,32 +90,32 @@ function placeOrder (paramOne, paramTwo, paramThree) {
             'NO'
         ]
     }]).then(answers => {
-        if(answers.confirm = "YES") {
-            updateDB(paramOne, paramTwo, paramThree);
+        if(answers.confirm =="YES") {
+            updateDB(stockQuantity, requestedQty, userPrice, itemInCart);
         }
-        if (answers.confirm="NO") {
+        if (answers.confirm == "NO") {
             console.log("Okay, please place another order then.");
             promptUser();
         }
     })
 }
 
-function updateDB(paramOne, paramTwo, paramThree) {
-    const updatedQuantity = paramOne - paramTwo;
+function updateDB(stockQuantity, requestedQty, userPrice, itemInCart) {
+    var updatedQuantity = stockQuantity - requestedQty;
+    console.log("Awesome! Remaining stock: " + updatedQuantity);
     connection.query(
         "UPDATE products SET ? WHERE ?",
             [{
                 stock_quantity: 
-                updatedQuantity}, 
+                updatedQuantity
+            }, 
              {
-                 id: paramThree
+                 item_id: itemInCart
             }],
             function (err) {
                 if (err) throw err;
-                conosle.log("Thanks for purchasing!");
+                console.log("Thanks for purchasing!");
             });
-        connection.end();
     };
-};
 
 promptUser();
