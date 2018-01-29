@@ -15,19 +15,25 @@ var connection = mysql.createConnection({
   database: 'bamazonDB'
 })
 
-function showWhatsInStock() {
+function showWhatsInStock(continuation) {
     connection.query("SELECT * FROM products", function (err, res) {
         if (err) throw err;
-        console.table(res);
-        // for (var i = 0; i < results.length; i++) {
-        //     console.log("Id: " + results[i].item_id + " -- " + results[i].product + " -- "
-        //         + results[i].department_name + " -- " + results[i].price + "-- " + results[i].stock_quantity);
-        // }   
+         for (var i = 0; i < res.length; i++) {
+            //  console.table(r);
+            let r = res[i];
+            console.log([r.item_id, r.product, r.department_name, r.price, r.stock_quantity].join('\t ||') + '\n')
+
+            //  console.log("Id: " + res[i].item_id + "\t || " + res[i].product + "\t || " + res[i].department_name + "\t|| " + res[i].price + "\t|| " + res[i].stock_quantity);
+         }  
+         if(continuation) continuation(err, res);
     });
 }
 
+function showAndPromptUser() {
+    showWhatsInStock(promptUser);
+}
+
 function promptUser () {
-  showWhatsInStock(); 
   inquirer.prompt([
     {
       type: 'list',
@@ -118,4 +124,4 @@ function updateDB(stockQuantity, requestedQty, userPrice, itemInCart) {
             });
     };
 
-promptUser();
+showAndPromptUser();
